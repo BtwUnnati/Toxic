@@ -7,7 +7,7 @@ from unidecode import unidecode
 from youtubesearchpython.__future__ import VideosSearch
 
 from Toxic import app
-from config import YOUTUBE_IMG_URL, OWNER_NAME  # OWNER_NAME config me define krna hoga
+from config import YOUTUBE_IMG_URL # OWNER_NAME config me define krna hoga
 
 
 def changeImageSize(maxWidth, maxHeight, image):
@@ -71,7 +71,7 @@ async def get_thumb(videoid):
             )
 
         # Bot + Owner Name (Top)
-        bot_owner = f"{unidecode(app.name)}  •  {OWNER_NAME}"
+        bot_owner = f"{unidecode(app.name)}  Toxic • "
         draw.text((40, 25), bot_owner, fill="white", font=font_small)
 
         # Song info (Bottom area like player)
