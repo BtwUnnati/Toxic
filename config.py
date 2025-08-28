@@ -86,18 +86,12 @@ confirmer = {}
 
 
 START_VIDS = [
-    "https://telegra.ph/file/9b7e1b820c72a14d90be7.mp4",
-    "https://telegra.ph/file/72f349b1386d6d9374a38.mp4",
-    "https://ar-hosting.pages.dev/1753090765686.mp4"
+    "https://ar-hosting.pages.dev/1756394801073.mp4",
+    "https://ar-hosting.pages.dev/1756395513196.mp4"
 ]
 
 U_M = [
-    "CAACAgUAAxkBAAEO-r9ofhl9UwhDzvXyDxohWDCxTvWPUwAC4gsAApy2kFcqc-w_yX7BbTYE",
-    "CAACAgUAAxkBAAEO-sFofhmDkIfsS_SeX7xAt0rlWew1LAACsw4AArzvmFf3UP-QMkPiMTYE",
-    "CAACAgUAAxkBAAEPATVogQABiPgUzcp_QfFeNXpm7DiS6BkAAn4TAAIorpFX0dc01tRWa9Y2BA",
-    "CAACAgUAAxkBAAEPATdogQABtsI7tJDmZ2NRTeNj_-hSNIIAAgwPAALHu5BXDizNqaJuL8M2BA",
-    "CAACAgUAAxkBAAEPAT1ogQFLr-EoSY_zy-lGYyucn397ygACJhMAAvkcwFRTGpVS2iWDjzYE",
-    "CAACAgUAAxkBAAEPAUFogQFT2RAy2Gv7KzNKt7wyqjah2AACTRAAAg_VwVRN2LLQ0sgZYTYE"
+    
 ]
 
 START_IMG_URL = getenv(
