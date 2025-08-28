@@ -15,8 +15,8 @@ from config import BANNED_USERS, PING_IMG_URL
 @language
 async def ping_com(client, message: Message, _):
     start = datetime.now()
-    response = await message.reply_video(
-        video="https://ar-hosting.pages.dev/1753091331936.mp4",
+    response = await message.reply_photo(
+        photo="https://ar-hosting.pages.dev/1756396971358.jpg",
         caption=_["ping_1"].format(app.mention),
     )
     pytgping = await Dev.ping()
@@ -26,3 +26,4 @@ async def ping_com(client, message: Message, _):
         _["ping_2"].format(resp, app.mention, UP, RAM, CPU, DISK, pytgping),
         reply_markup=supp_markup(_),
     )
+
