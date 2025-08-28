@@ -1,8 +1,8 @@
 import os
 import re
-
 import aiofiles
 import aiohttp
+from io import BytesIO
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 from unidecode import unidecode
 from youtubesearchpython.__future__ import VideosSearch
@@ -11,111 +11,112 @@ from Toxic import app
 from config import YOUTUBE_IMG_URL
 
 
-def changeImageSize(maxWidth, maxHeight, image):
-    widthRatio = maxWidth / image.size[0]
-    heightRatio = maxHeight / image.size[1]
-    newWidth = int(widthRatio * image.size[0])
-    newHeight = int(heightRatio * image.size[1])
-    newImage = image.resize((newWidth, newHeight))
-    return newImage
-
-
-def clear(text):
-    list = text.split(" ")
+def clear(text: str) -> str:
+    """
+    Limit title length to 60 chars
+    """
+    words = text.split(" ")
     title = ""
-    for i in list:
+    for i in words:
         if len(title) + len(i) < 60:
             title += " " + i
     return title.strip()
 
 
-async def get_thumb(videoid):
-    if os.path.isfile(f"cache/{videoid}.png"):
-        return f"cache/{videoid}.png"
+def sec_to_mmss(sec: int) -> str:
+    try:
+        sec = int(sec)
+        return f"{sec//60}:{sec%60:02d}"
+    except:
+        return "0:00"
+
+
+async def get_thumb(videoid: str):
+    """
+    Generate Spotify-like thumbnail for YouTube video
+    """
+    out_path = f"cache/{videoid}.png"
+    if os.path.isfile(out_path):
+        return out_path
 
     url = f"https://www.youtube.com/watch?v={videoid}"
     try:
         results = VideosSearch(url, limit=1)
-        for result in (await results.next())["result"]:
-            try:
-                title = result["title"]
-                title = re.sub("\W+", " ", title)
-                title = title.title()
-            except:
-                title = "Unsupported Title"
-            try:
-                duration = result["duration"]
-            except:
-                duration = "Unknown Mins"
-            thumbnail = result["thumbnails"][0]["url"].split("?")[0]
-            try:
-                views = result["viewCount"]["short"]
-            except:
-                views = "Unknown Views"
-            try:
-                channel = result["channel"]["name"]
-            except:
-                channel = "Unknown Channel"
+        data = (await results.next())["result"][0]
 
+        # --- video info ---
+        title = re.sub(r"\W+", " ", data.get("title", "Unknown")).title()
+        duration = data.get("duration", "0:00")
+        thumbnail = data["thumbnails"][0]["url"].split("?")[0]
+        views = data.get("viewCount", {}).get("short", "0 views")
+        channel = data.get("channel", {}).get("name", "Unknown")
+
+        # --- download thumbnail ---
+        tmp = f"cache/thumb{videoid}.png"
         async with aiohttp.ClientSession() as session:
             async with session.get(thumbnail) as resp:
                 if resp.status == 200:
-                    f = await aiofiles.open(f"cache/thumb{videoid}.png", mode="wb")
+                    f = await aiofiles.open(tmp, mode="wb")
                     await f.write(await resp.read())
                     await f.close()
 
-        youtube = Image.open(f"cache/thumb{videoid}.png")
-        image1 = changeImageSize(1280, 720, youtube)
-        image2 = image1.convert("RGBA")
-        background = image2.filter(filter=ImageFilter.BoxBlur(10))
-        enhancer = ImageEnhance.Brightness(background)
-        background = enhancer.enhance(0.5)
-        draw = ImageDraw.Draw(background)
-        arial = ImageFont.truetype("Toxic/assets/font2.ttf", 30)
-        font = ImageFont.truetype("Toxic/assets/font.ttf", 30)
-        draw.text((1110, 8), unidecode(app.name), fill="white", font=arial)
-        draw.text(
-            (55, 560),
-            f"{channel} | {views[:23]}",
-            (255, 255, 255),
-            font=arial,
-        )
-        draw.text(
-            (57, 600),
-            clear(title),
-            (255, 255, 255),
-            font=font,
-        )
-        draw.line(
-            [(55, 660), (1220, 660)],
-            fill="white",
-            width=5,
-            joint="curve",
-        )
-        draw.ellipse(
-            [(918, 648), (942, 672)],
-            outline="white",
-            fill="white",
-            width=15,
-        )
-        draw.text(
-            (36, 685),
-            "00:00",
-            (255, 255, 255),
-            font=arial,
-        )
-        draw.text(
-            (1185, 685),
-            f"{duration[:23]}",
-            (255, 255, 255),
-            font=arial,
-        )
+        cover = Image.open(tmp).convert("RGB")
+
+        # --- canvas background ---
+        W, H = (600, 360)
+        bg = cover.resize((W, H)).filter(ImageFilter.GaussianBlur(20))
+        enhancer = ImageEnhance.Brightness(bg)
+        bg = enhancer.enhance(0.4).convert("RGBA")
+
+        # --- card ---
+        card = Image.new("RGBA", (W-40, H-40), (0, 0, 0, 180))
+        draw = ImageDraw.Draw(card)
+
+        # fonts
+        font_title = ImageFont.truetype("Toxic/assets/font.ttf", 28)
+        font_small = ImageFont.truetype("Toxic/assets/font2.ttf", 20)
+
+        # paste album art
+        art_size = 200
+        art = cover.resize((art_size, art_size))
+        mask = Image.new("L", (art_size, art_size), 0)
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, art_size, art_size), 20, fill=255)
+        card.paste(art, (20, 20), mask)
+
+        # --- text ---
+        draw.text((250, 40), clear(title), font=font_title, fill="white")
+        draw.text((250, 80), f"{channel} • {views}", font=font_small, fill=(220,220,220))
+
+        # --- progress bar ---
         try:
-            os.remove(f"cache/thumb{videoid}.png")
+            mins, secs = duration.split(":")
+            total = int(mins)*60 + int(secs)
+        except:
+            total = 0
+        pos = 0  # start hamesha 0 pe (live update ke liye baad me badlenge)
+        bar_x, bar_y, bar_w = 250, 130, 300
+        draw.rectangle((bar_x, bar_y, bar_x+bar_w, bar_y+6), fill=(90,90,90))
+        fill_w = max(10, int(bar_w * 0.02))  # thoda filled
+        draw.rectangle((bar_x, bar_y, bar_x+fill_w, bar_y+6), fill="white")
+
+        draw.text((bar_x, bar_y+12), "0:00", font=font_small, fill="white")
+        draw.text((bar_x+bar_w-50, bar_y+12), duration, font=font_small, fill="white")
+
+        # --- controls (pause icon) ---
+        draw.rectangle((310, 200, 322, 240), fill="white")  # left bar
+        draw.rectangle((328, 200, 340, 240), fill="white")  # right bar
+
+        # --- merge card with background ---
+        bg.alpha_composite(card, (20, 20))
+
+        # save
+        bg.convert("RGB").save(out_path, "PNG")
+        try:
+            os.remove(tmp)
         except:
             pass
-        background.save(f"cache/{videoid}.png")
-        return f"cache/{videoid}.png"
+
+        return out_path
     except Exception as e:
-        print(e)
+        print("Thumb error:", e)
         return YOUTUBE_IMG_URL
