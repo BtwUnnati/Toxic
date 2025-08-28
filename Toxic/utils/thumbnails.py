@@ -5,7 +5,7 @@ import httpx
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 from aiofiles.os import path as aiopath
 
-from Toxic.dataclass import CachedTrack
+from Toxic.dataclass.data import CachedTrack
 from Toxic.logging import LOGGER
 
 FONTS = {
