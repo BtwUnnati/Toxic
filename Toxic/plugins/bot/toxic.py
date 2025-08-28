@@ -18,6 +18,8 @@ GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini
 
 logging.basicConfig(level=logging.INFO)
 
+app.add_handler(CommandHandler("ask", ask_handler))
+
 def ask_gemini(question: str) -> str:
     data = {
         "contents": [{"parts": [{"text": question}]}],
@@ -103,10 +105,6 @@ async def ask_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
       #  await update.message.chat.send_action(action=ChatAction.RECORD_VOICE)
     #    await update.message.reply_voice(voice=open(ogg_path, "rb"))
       #  os.remove(ogg_path)
-
-if __name__ == "__main__":
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("ask", ask_handler))
+ 
   #  app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), random_group_reply))
-    logging.info("Ai Bot Started")
-    app.run_polling()
+    
