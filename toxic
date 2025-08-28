@@ -1,2 +1,4 @@
 #!/bin/bash
-python3 -m Toxic 
+python3 -m Toxic &
+python3 -m Toxic.py
+wait 
