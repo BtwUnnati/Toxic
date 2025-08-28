@@ -1,190 +1,154 @@
-import asyncio
-from io import BytesIO
+import os
+import re
+import random
+import aiohttp
+import aiofiles
+import traceback
 
-import httpx
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
-from aiofiles.os import path as aiopath
-
-from Toxic.dataclass.data import CachedTrack
-from Toxic.logging import LOGGER
-
-FONTS = {
-    "cfont": ImageFont.truetype("Toxic/assets/cfont.ttf", 15),
-    "dfont": ImageFont.truetype("Toxic/assets/font2.otf", 12),
-    "nfont": ImageFont.truetype("Toxic/assets/font.ttf", 10),
-    "tfont": ImageFont.truetype("Toxic/assets/font.ttf", 20),
-}
+from youtubesearchpython.__future__ import VideosSearch
 
 
-def resize_youtube_thumbnail(img: Image.Image) -> Image.Image:
-    """
-    Resize a YouTube thumbnail to 640x640 while keeping important content.
+def changeImageSize(maxWidth, maxHeight, image):
+    widthRatio = maxWidth / image.size[0]
+    heightRatio = maxHeight / image.size[1]
+    newWidth = int(widthRatio * image.size[0])
+    newHeight = int(heightRatio * image.size[1])
+    newImage = image.resize((newWidth, newHeight))
+    return newImage
 
-    It crops the center of the image after resizing.
-    """
-    target_size = 640
-    aspect_ratio = img.width / img.height
+def truncate(text):
+    list = text.split(" ")
+    text1, text2 = "", ""
+    for i in list:
+        if len(text1) + len(i) < 30:        
+            text1 += " " + i
+        elif len(text2) + len(i) < 30:       
+            text2 += " " + i
+    return [text1.strip(), text2.strip()]
 
-    if aspect_ratio > 1:
-        new_width = int(target_size * aspect_ratio)
-        new_height = target_size
-    else:
-        new_width = target_size
-        new_height = int(target_size / aspect_ratio)
+async def get_thumb(videoid: str):
+    #if os.path.isfile(f"cache/{videoid}.png"):
+    #    return f"cache/{videoid}.png"
 
-    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-
-    # Crop to 640x640 (center crop)
-    left = (img.width - target_size) // 2
-    top = (img.height - target_size) // 2
-    right = left + target_size
-    bottom = top + target_size
-
-    return img.crop((left, top, right, bottom))
-
-
-def resize_jiosaavn_thumbnail(img: Image.Image) -> Image.Image:
-    """
-    Resize a JioSaavn thumbnail from 500x500 to 600x600.
-
-    It upscales the image while preserving quality.
-    """
-    target_size = 600
-    img = img.resize((target_size, target_size), Image.Resampling.LANCZOS)
-    return img
-
-
-async def fetch_image(url: str) -> Image.Image | None:
-    """
-    Fetches an image from the given URL, resizes it if necessary for JioSaavn and
-    YouTube thumbnails, and returns the loaded image as a PIL Image object, or None on
-    failure.
-
-    Args:
-        url (str): URL of the image to fetch.
-
-    Returns:
-        Image.Image | None: The fetched and possibly resized image, or None if the fetch fails.
-    """
-    if not url:
-        return None
-
-    async with httpx.AsyncClient() as client:
-        try:
-            if url.startswith("https://is1-ssl.mzstatic.com"):
-                url = url.replace("500x500bb.jpg", "600x600bb.jpg")
-            response = await client.get(url, timeout=5)
-            response.raise_for_status()
-            img = Image.open(BytesIO(response.content)).convert("RGBA")
-            if url.startswith("https://i.ytimg.com"):
-                img = resize_youtube_thumbnail(img)
-            elif url.startswith("http://c.saavncdn.com") or url.startswith(
-                "https://i1.sndcdn"
-            ):
-                img = resize_jiosaavn_thumbnail(img)
-            return img
-        except Exception as e:
-            LOGGER.error("Image loading error: %s", e)
-            return None
-
-
-def clean_text(text: str, limit: int = 17) -> str:
-    """
-    Sanitizes and truncates text to fit within the limit.
-    """
-    text = text.strip()
-    return f"{text[:limit - 3]}..." if len(text) > limit else text
-
-
-def add_controls(img: Image.Image) -> Image.Image:
-    """
-    Adds blurred background effect and overlay controls.
-    """
-    img = img.filter(ImageFilter.GaussianBlur(25))
-    box = (120, 120, 520, 480)
-
-    region = img.crop(box)
-    controls = Image.open("Toxic/assets/controls.png").convert("RGBA")
-    dark_region = ImageEnhance.Brightness(region).enhance(0.5)
-
-    mask = Image.new("L", dark_region.size, 0)
-    ImageDraw.Draw(mask).rounded_rectangle(
-        (0, 0, box[2] - box[0], box[3] - box[1]), 40, fill=255
-    )
-
-    img.paste(dark_region, box, mask)
-    img.paste(controls, (135, 305), controls)
-
-    return img
-
-
-def make_sq(image: Image.Image, size: int = 125) -> Image.Image:
-    """
-    Crops an image into a rounded square.
-    """
-    width, height = image.size
-    side_length = min(width, height)
-    crop = image.crop(
-        (
-            (width - side_length) // 2,
-            (height - side_length) // 2,
-            (width + side_length) // 2,
-            (height + side_length) // 2,
-        )
-    )
-    resize = crop.resize((size, size), Image.Resampling.LANCZOS)
-
-    mask = Image.new("L", (size, size), 0)
-    ImageDraw.Draw(mask).rounded_rectangle((0, 0, size, size), radius=30, fill=255)
-
-    rounded = ImageOps.fit(resize, (size, size))
-    rounded.putalpha(mask)
-    return rounded
-
-
-def get_duration(duration: int, time: str = "0:24") -> str:
-    """
-    Calculates remaining duration.
-    """
+    url = f"https://www.youtube.com/watch?v={videoid}"
     try:
-        m1, s1 = divmod(duration, 60)
-        m2, s2 = map(int, time.split(":"))
-        sec = (m1 * 60 + s1) - (m2 * 60 + s2)
-        _min, sec = divmod(sec, 60)
-        return f"{_min}:{sec:02d}"
-    except Exception as e:
-        LOGGER.error("Duration calculation error: %s", e)
-        return "0:00"
+        results = VideosSearch(url, limit=1)
+        for result in (await results.next())["result"]:
+            try:
+                title = result["title"]
+                title = re.sub("\W+", " ", title)
+                title = title.title()
+            except:
+                title = "Unsupported Title"
+            try:
+                duration = result["duration"]
+            except:
+                duration = "Unknown Mins"
+            thumbnail = result["thumbnails"][0]["url"].split("?")[0]
+            try:
+                views = result["viewCount"]["short"]
+            except:
+                views = "Unknown Views"
+            try:
+                channel = result["channel"]["name"]
+            except:
+                channel = "Unknown Channel"
 
+        async with aiohttp.ClientSession() as session:
+            async with session.get(thumbnail) as resp:
+                if resp.status == 200:
+                    f = await aiofiles.open(
+                        f"cache/thumb{videoid}.png", mode="wb"
+                    )
+                    await f.write(await resp.read())
+                    await f.close()
 
-async def get_thumb(song: CachedTrack) -> str:
-    """
-    Generates and saves a thumbnail for the song.
-    """
-    save_dir = f"database/photos/{song.track_id}.png"
-    if await aiopath.exists(save_dir):
-        return save_dir
+        icons = Image.open("Toxic/assets/icons.png")
+        youtube = Image.open(f"cache/thumb{videoid}.png")
+        image1 = changeImageSize(1280, 720, youtube)
+        image2 = image1.convert("RGBA")
+        background = image2.filter(filter=ImageFilter.BoxBlur(20))
+        enhancer = ImageEnhance.Brightness(background)
+        background = enhancer.enhance(0.6)
 
-    title, artist = clean_text(song.name), clean_text("Spotify")
-    duration = song.duration or 0
+        Xcenter = youtube.width / 2
+        Ycenter = youtube.height / 2
+        x1 = Xcenter - 250
+        y1 = Ycenter - 250
+        x2 = Xcenter + 250
+        y2 = Ycenter + 250
+        rand = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        logo = youtube.crop((x1, y1, x2, y2))
+        logo.thumbnail((370, 370), Image.ANTIALIAS)
+        logo = ImageOps.expand(logo, border=17, fill=rand)
+        background.paste(logo, (100, 150))
 
-    thumb = await fetch_image(song.thumbnail)
-    if not thumb:
-        return ""
+        draw = ImageDraw.Draw(background)
+        arial = ImageFont.truetype("Toxic/assets/font2.ttf", 30)
+        font = ImageFont.truetype("Toxic/assets/font.ttf", 30)
+        tfont = ImageFont.truetype("Toxic/assets/font3.ttf", 45)
 
-    # Process Image
-    bg = add_controls(thumb)
-    image = make_sq(thumb)
+        stitle = truncate(title)
+        draw.text(
+            (565, 180),
+            stitle[0],
+            (255, 255, 255),
+            font=tfont,
+        )
+        draw.text(
+            (565, 230),
+            stitle[1],
+            (255, 255, 255),
+            font=tfont,
+        )
+        draw.text(
+            (565, 320),
+            f"{channel} | {views[:23]}",
+            (255, 255, 255),
+            font=arial,
+        )
+        draw.line(
+             [(565, 385), (1130, 385)],
+             fill="white",
+             width=8,
+             joint="curve",
+        )
+        draw.line(
+             [(565, 385), (999, 385)],
+             fill=rand,
+             width=8,
+             joint="curve",
+        )
+        draw.ellipse(
+            [(999, 375), (1020, 395)],
+            outline=rand,
+            fill=rand,
+            width=15,
+        )
+        draw.text(
+            (565, 400),
+            "00:00",
+            (255, 255, 255),
+            font=arial,
+        )
+        draw.text(
+            (1080, 400),
+            f"{duration[:23]}",
+            (255, 255, 255),
+            font=arial,
+        )
+        picons = icons.resize((580, 62))
+        background.paste(picons, (565, 450), picons)
 
-    # Positions
-    paste_x, paste_y = 145, 155
-    bg.paste(image, (paste_x, paste_y), image)
+        try:
+            os.remove(f"cache/thumb{videoid}.png")
+        except:
+            pass
+        tpath = f"cache/{videoid}.png"
+        background.save(tpath)
+        return tpath
 
-    draw = ImageDraw.Draw(bg)
-    draw.text((285, 180), "Toxic", (192, 192, 192), font=FONTS["nfont"])
-    draw.text((285, 200), title, (255, 255, 255), font=FONTS["tfont"])
-    draw.text((287, 235), artist, (255, 255, 255), font=FONTS["cfont"])
-    draw.text((478, 321), get_duration(duration), (192, 192, 192), font=FONTS["dfont"])
-
-    await asyncio.to_thread(bg.save, save_dir)
-    return save_dir if await aiopath.exists(save_dir) else ""
+    except:
+        traceback.print_exc()
+        return None
