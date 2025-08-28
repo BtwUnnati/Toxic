@@ -1,210 +1,194 @@
-import os
-import re
-import math
-import aiofiles
-import aiohttp
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
-from youtubesearchpython.__future__ import VideosSearch
+#  Copyright (c) 2025 AshokShau
+#  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
+#  Part of the TgMusicBot project. All rights reserved where applicable.
 
-from Toxic import app
-from config import YOUTUBE_IMG_URL # OWNER_NAME config me add karna
+import asyncio
+from io import BytesIO
 
-# ---------- helpers ----------
-META_CACHE = {}  # {videoid: {"title":..., "duration": "m:ss", "channel":..., "thumb": path}}
+import httpx
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
+from aiofiles.os import path as aiopath
 
-def _mmss_to_sec(s: str) -> int:
-    try:
-        parts = s.split(":")
-        if len(parts) == 3:
-            h, m, s = int(parts[0]), int(parts[1]), int(parts[2])
-            return h*3600 + m*60 + s
-        if len(parts) == 2:
-            m, s = int(parts[0]), int(parts[1])
-            return m*60 + s
-        return int(s)
-    except Exception:
-        return 0
+from Toxic.dataclass import CachedTrack
+from Toxic.logging import LOGGER
 
-def _sec_to_mmss(sec: float) -> str:
-    sec = max(0, int(sec))
-    return f"{sec//60}:{sec%60:02d}"
+FONTS = {
+    "cfont": ImageFont.truetype("cfont.ttf", 15),
+    "dfont": ImageFont.truetype("font2.otf", 12),
+    "nfont": ImageFont.truetype("font.ttf", 10),
+    "tfont": ImageFont.truetype("font.ttf", 20),
+}
 
-def _font(path, size, fallback=None):
-    try:
-        return ImageFont.truetype(path, size)
-    except Exception:
-        # very small bitmap fallback
-        return ImageFont.load_default()
 
-async def _fetch_meta(videoid: str):
-    if videoid in META_CACHE:
-        return META_CACHE[videoid]
-
-    url = f"https://www.youtube.com/watch?v={videoid}"
-    results = VideosSearch(url, limit=1)
-    data = (await results.next())["result"][0]
-
-    title = re.sub(r"\s+", " ", data.get("title", "Unknown Song")).strip()
-    duration = data.get("duration", "0:00")
-    channel = data.get("channel", {}).get("name", "Unknown Artist")
-    thumb_url = data["thumbnails"][0]["url"].split("?")[0]
-
-    # download cover
-    tmp_path = f"cache/thumb{videoid}.png"
-    async with aiohttp.ClientSession() as session:
-        async with session.get(thumb_url) as resp:
-            if resp.status == 200:
-                f = await aiofiles.open(tmp_path, mode="wb")
-                await f.write(await resp.read())
-                await f.close()
-
-    META_CACHE[videoid] = {
-        "title": title,
-        "duration": duration,
-        "channel": channel,
-        "tmp": tmp_path,
-    }
-    return META_CACHE[videoid]
-
-# ---------- main ----------
-async def get_thumb(
-    videoid: str,
-    position: float = 0.0,          # current playback seconds
-    total: int | None = None,       # override total secs; else parsed from YouTube duration
-):
+def resize_youtube_thumbnail(img: Image.Image) -> Image.Image:
     """
-    Generate an iOS-style now playing thumbnail PNG with real-time progress.
+    Resize a YouTube thumbnail to 640x640 while keeping important content.
 
-    Call this repeatedly with updated `position` while the track plays.
-    Returns: cache/{videoid}.png
+    It crops the center of the image after resizing.
     """
-    out_path = f"cache/{videoid}.png"
+    target_size = 640
+    aspect_ratio = img.width / img.height
 
-    try:
-        meta = await _fetch_meta(videoid)
-        title = meta["title"]
-        duration_str = meta["duration"]
-        channel = meta["channel"]
-        cover = Image.open(meta["tmp"]).convert("RGBA")
+    if aspect_ratio > 1:
+        new_width = int(target_size * aspect_ratio)
+        new_height = target_size
+    else:
+        new_width = target_size
+        new_height = int(target_size / aspect_ratio)
 
-        # canvas & background
-        W, H = 1280, 720
-        bg = cover.resize((W, H)).filter(ImageFilter.GaussianBlur(38))
-        # subtle vignette
-        vign = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        vd = ImageDraw.Draw(vign)
-        vd.rectangle((0, 0, W, H), fill=(0, 0, 0, 90))
-        bg = Image.alpha_composite(bg.convert("RGBA"), vign)
+    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
-        # card container
-        CARD_W, CARD_H = 1180, 600
-        card = Image.new("RGBA", (CARD_W, CARD_H), (0, 0, 0, 0))
-        mask = Image.new("L", (CARD_W, CARD_H), 0)
-        radius = 56
-        ImageDraw.Draw(mask).rounded_rectangle((0, 0, CARD_W, CARD_H), radius, fill=255)
+    # Crop to 640x640 (center crop)
+    left = (img.width - target_size) // 2
+    top = (img.height - target_size) // 2
+    right = left + target_size
+    bottom = top + target_size
 
-        # card background (glass look)
-        glass = Image.new("RGBA", (CARD_W, CARD_H), (24, 26, 30, 200))
-        # inner subtle border/glow
-        glow = Image.new("RGBA", (CARD_W, CARD_H), (0, 0, 0, 0))
-        gd = ImageDraw.Draw(glow)
-        for i in range(5):
-            gd.rounded_rectangle(
-                (3+i, 3+i, CARD_W-3-i, CARD_H-3-i),
-                radius=radius-2,
-                outline=(255, 255, 255, 70 - i*12),
-                width=2,
-            )
-        glass = Image.alpha_composite(glass, glow)
-        card.paste(glass, (0, 0), mask)
+    return img.crop((left, top, right, bottom))
 
-        cd = ImageDraw.Draw(card)
 
-        # cover art (left)
-        COVER_SIZE = 500
-        cover_resized = cover.resize((COVER_SIZE, COVER_SIZE))
-        cover_mask = Image.new("L", (COVER_SIZE, COVER_SIZE), 0)
-        ImageDraw.Draw(cover_mask).rounded_rectangle((0, 0, COVER_SIZE, COVER_SIZE), 44, fill=255)
-        card.paste(cover_resized, (40, 50), cover_mask)
+def resize_jiosaavn_thumbnail(img: Image.Image) -> Image.Image:
+    """
+    Resize a JioSaavn thumbnail from 500x500 to 600x600.
 
-        # fonts
-        font_title = _font("Toxic/assets/font.ttf", 44)
-        font_small = _font("Toxic/assets/font2.ttf", 26)
-        font_med = _font("Toxic/assets/font2.ttf", 30)
+    It upscales the image while preserving quality.
+    """
+    target_size = 600
+    img = img.resize((target_size, target_size), Image.Resampling.LANCZOS)
+    return img
 
-        # text (right)
-        RIGHT_X = 580
-        cd.text((RIGHT_X, 120), f"{title}", font=font_title, fill=(255, 255, 255, 255))
-        cd.text((RIGHT_X, 170), f"{channel}", font=font_small, fill=(220, 225, 230, 255))
 
-        # progress bar
-        total_secs = total if total is not None else _mmss_to_sec(duration_str)
-        total_secs = max(1, int(total_secs))
-        pos = max(0, min(int(position), total_secs))
-        left_label = _sec_to_mmss(pos)
-        right_label = _sec_to_mmss(total_secs)
+async def fetch_image(url: str) -> Image.Image | None:
+    """
+    Fetches an image from the given URL, resizes it if necessary for JioSaavn and
+    YouTube thumbnails, and returns the loaded image as a PIL Image object, or None on
+    failure.
 
-        BAR_X1, BAR_X2 = RIGHT_X, RIGHT_X + 500
-        BAR_Y = 230
-        # base line
-        cd.line((BAR_X1, BAR_Y, BAR_X2, BAR_Y), fill=(210, 215, 220, 180), width=8)
-        # fill line
-        p = pos / total_secs
-        knob_x = int(BAR_X1 + (BAR_X2 - BAR_X1) * p)
-        cd.line((BAR_X1, BAR_Y, knob_x, BAR_Y), fill=(255, 255, 255, 255), width=8)
-        # knob
-        cd.ellipse((knob_x-10, BAR_Y-10, knob_x+10, BAR_Y+10), fill=(255, 255, 255, 255))
+    Args:
+        url (str): URL of the image to fetch.
 
-        # time labels
-        cd.text((BAR_X1, BAR_Y + 12), left_label, font=font_small, fill=(255, 255, 255, 230))
-        tw = cd.textlength(right_label, font=font_small)
-        cd.text((BAR_X2 - tw, BAR_Y + 12), right_label, font=font_small, fill=(255, 255, 255, 230))
+    Returns:
+        Image.Image | None: The fetched and possibly resized image, or None if the fetch fails.
+    """
+    if not url:
+        return None
 
-        # transport controls (vector icons)
-        CTRL_Y = 330
-        # prev
-        def triangle(center, size=18, direction="left"):
-            cx, cy = center
-            if direction == "left":
-                return [(cx+size//2, cy-size), (cx+size//2, cy+size), (cx-size, cy)]
-            else:
-                return [(cx-size//2, cy-size), (cx-size//2, cy+size), (cx+size, cy)]
-        cd.polygon(triangle((RIGHT_X + 40, CTRL_Y), direction="left"), fill=(255, 255, 255, 240))
-        cd.rectangle((RIGHT_X + 48, CTRL_Y-20, RIGHT_X + 54, CTRL_Y+20), fill=(255, 255, 255, 240))
-
-        # pause
-        PX = RIGHT_X + 120
-        cd.rectangle((PX-14, CTRL_Y-24, PX-6, CTRL_Y+24), fill=(255, 255, 255, 240))
-        cd.rectangle((PX+6, CTRL_Y-24, PX+14, CTRL_Y+24), fill=(255, 255, 255, 240))
-
-        # next
-        NX = RIGHT_X + 200
-        cd.rectangle((NX-54, CTRL_Y-20, NX-48, CTRL_Y+20), fill=(255, 255, 255, 240))
-        cd.polygon(triangle((NX - 40, CTRL_Y), direction="right"), fill=(255, 255, 255, 240))
-
-        # bot + owner (top-right)
-        tag = f"{app.name}  •  Toxic "
-        tag_w = cd.textlength(tag, font=font_small)
-        cd.text((CARD_W - 30 - tag_w, 34), tag, font=font_small, fill=(235, 235, 240, 255))
-
-        # paste card onto bg
-        bg.paste(card, (50, 60), card)
-
-        # iOS bottom handle (small line)
-        h_d = ImageDraw.Draw(bg)
-        h_d.rounded_rectangle((W//2 - 70, H - 60, W//2 + 70, H - 48), radius=6, fill=(255, 255, 255, 130))
-
-        # save
-        bg.convert("RGB").save(out_path, "PNG")
-        # clean temp once (keep cache file for speed if you like)
+    async with httpx.AsyncClient() as client:
         try:
-            os.remove(meta["tmp"])
-            META_CACHE[videoid]["tmp"] = out_path  # reuse final as cover source next calls
-        except Exception:
-            pass
+            if url.startswith("https://is1-ssl.mzstatic.com"):
+                url = url.replace("500x500bb.jpg", "600x600bb.jpg")
+            response = await client.get(url, timeout=5)
+            response.raise_for_status()
+            img = Image.open(BytesIO(response.content)).convert("RGBA")
+            if url.startswith("https://i.ytimg.com"):
+                img = resize_youtube_thumbnail(img)
+            elif url.startswith("http://c.saavncdn.com") or url.startswith(
+                "https://i1.sndcdn"
+            ):
+                img = resize_jiosaavn_thumbnail(img)
+            return img
+        except Exception as e:
+            LOGGER.error("Image loading error: %s", e)
+            return None
 
-        return out_path
 
+def clean_text(text: str, limit: int = 17) -> str:
+    """
+    Sanitizes and truncates text to fit within the limit.
+    """
+    text = text.strip()
+    return f"{text[:limit - 3]}..." if len(text) > limit else text
+
+
+def add_controls(img: Image.Image) -> Image.Image:
+    """
+    Adds blurred background effect and overlay controls.
+    """
+    img = img.filter(ImageFilter.GaussianBlur(25))
+    box = (120, 120, 520, 480)
+
+    region = img.crop(box)
+    controls = Image.open("controls.png").convert("RGBA")
+    dark_region = ImageEnhance.Brightness(region).enhance(0.5)
+
+    mask = Image.new("L", dark_region.size, 0)
+    ImageDraw.Draw(mask).rounded_rectangle(
+        (0, 0, box[2] - box[0], box[3] - box[1]), 40, fill=255
+    )
+
+    img.paste(dark_region, box, mask)
+    img.paste(controls, (135, 305), controls)
+
+    return img
+
+
+def make_sq(image: Image.Image, size: int = 125) -> Image.Image:
+    """
+    Crops an image into a rounded square.
+    """
+    width, height = image.size
+    side_length = min(width, height)
+    crop = image.crop(
+        (
+            (width - side_length) // 2,
+            (height - side_length) // 2,
+            (width + side_length) // 2,
+            (height + side_length) // 2,
+        )
+    )
+    resize = crop.resize((size, size), Image.Resampling.LANCZOS)
+
+    mask = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, size, size), radius=30, fill=255)
+
+    rounded = ImageOps.fit(resize, (size, size))
+    rounded.putalpha(mask)
+    return rounded
+
+
+def get_duration(duration: int, time: str = "0:24") -> str:
+    """
+    Calculates remaining duration.
+    """
+    try:
+        m1, s1 = divmod(duration, 60)
+        m2, s2 = map(int, time.split(":"))
+        sec = (m1 * 60 + s1) - (m2 * 60 + s2)
+        _min, sec = divmod(sec, 60)
+        return f"{_min}:{sec:02d}"
     except Exception as e:
-        print("Thumbnail Error:", e)
-        return YOUTUBE_IMG_URL
+        LOGGER.error("Duration calculation error: %s", e)
+        return "0:00"
+
+
+async def get_thumb(song: CachedTrack) -> str:
+    """
+    Generates and saves a thumbnail for the song.
+    """
+    save_dir = f"database/photos/{song.track_id}.png"
+    if await aiopath.exists(save_dir):
+        return save_dir
+
+    title, artist = clean_text(song.name), clean_text("Spotify")
+    duration = song.duration or 0
+
+    thumb = await fetch_image(song.thumbnail)
+    if not thumb:
+        return ""
+
+    # Process Image
+    bg = add_controls(thumb)
+    image = make_sq(thumb)
+
+    # Positions
+    paste_x, paste_y = 145, 155
+    bg.paste(image, (paste_x, paste_y), image)
+
+    draw = ImageDraw.Draw(bg)
+    draw.text((285, 180), "Toxic", (192, 192, 192), font=FONTS["nfont"])
+    draw.text((285, 200), title, (255, 255, 255), font=FONTS["tfont"])
+    draw.text((287, 235), artist, (255, 255, 255), font=FONTS["cfont"])
+    draw.text((478, 321), get_duration(duration), (192, 192, 192), font=FONTS["dfont"])
+
+    await asyncio.to_thread(bg.save, save_dir)
+    return save_dir if await aiopath.exists(save_dir) else ""
