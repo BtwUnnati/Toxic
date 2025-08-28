@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from youtubesearchpython.__future__ import VideosSearch
 
 from Toxic import app
-from config import YOUTUBE_IMG_URL, OWNER_NAME  # OWNER_NAME config me add karna
+from config import YOUTUBE_IMG_URL # OWNER_NAME config me add karna
 
 # ---------- helpers ----------
 META_CACHE = {}  # {videoid: {"title":..., "duration": "m:ss", "channel":..., "thumb": path}}
@@ -183,7 +183,7 @@ async def get_thumb(
         cd.polygon(triangle((NX - 40, CTRL_Y), direction="right"), fill=(255, 255, 255, 240))
 
         # bot + owner (top-right)
-        tag = f"{app.name}  •  {OWNER_NAME}"
+        tag = f"{app.name}  •  Toxic "
         tag_w = cd.textlength(tag, font=font_small)
         cd.text((CARD_W - 30 - tag_w, 34), tag, font=font_small, fill=(235, 235, 240, 255))
 
