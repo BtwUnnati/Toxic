@@ -109,5 +109,5 @@ if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("ask", ask_handler))
   #  app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), random_group_reply))
-    logging.info("Bot started with error-free MarkdownV2 🚀")
+    logging.info("Ai Bot Started")
     app.run_polling()
