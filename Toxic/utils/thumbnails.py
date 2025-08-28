@@ -1,7 +1,3 @@
-#  Copyright (c) 2025 AshokShau
-#  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
-#  Part of the TgMusicBot project. All rights reserved where applicable.
-
 import asyncio
 from io import BytesIO
 
@@ -13,10 +9,10 @@ from Toxic.dataclass import CachedTrack
 from Toxic.logging import LOGGER
 
 FONTS = {
-    "cfont": ImageFont.truetype("cfont.ttf", 15),
-    "dfont": ImageFont.truetype("font2.otf", 12),
-    "nfont": ImageFont.truetype("font.ttf", 10),
-    "tfont": ImageFont.truetype("font.ttf", 20),
+    "cfont": ImageFont.truetype("Toxic/assets/cfont.ttf", 15),
+    "dfont": ImageFont.truetype("Toxic/assets/font2.otf", 12),
+    "nfont": ImageFont.truetype("Toxic/assets/font.ttf", 10),
+    "tfont": ImageFont.truetype("Toxic/assets/font.ttf", 20),
 }
 
 
@@ -108,7 +104,7 @@ def add_controls(img: Image.Image) -> Image.Image:
     box = (120, 120, 520, 480)
 
     region = img.crop(box)
-    controls = Image.open("controls.png").convert("RGBA")
+    controls = Image.open("Toxic/assets/controls.png").convert("RGBA")
     dark_region = ImageEnhance.Brightness(region).enhance(0.5)
 
     mask = Image.new("L", dark_region.size, 0)
