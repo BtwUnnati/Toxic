@@ -65,51 +65,70 @@ async def get_thumb(videoid):
                     await f.close()
 
         youtube = Image.open(f"cache/thumb{videoid}.png")
-        image1 = changeImageSize(1280, 720, youtube)
+
+        # Thumbnail ka size chhota (compact)
+        image1 = changeImageSize(640, 360, youtube)
+
         image2 = image1.convert("RGBA")
         background = image2.filter(filter=ImageFilter.BoxBlur(10))
         enhancer = ImageEnhance.Brightness(background)
         background = enhancer.enhance(0.5)
+
         draw = ImageDraw.Draw(background)
-        arial = ImageFont.truetype("Toxic/assets/font2.ttf", 30)
-        font = ImageFont.truetype("Toxic/assets/font.ttf", 30)
-        draw.text((1110, 8), unidecode(app.name), fill="white", font=arial)
+        arial = ImageFont.truetype("Toxic/assets/font2.ttf", 20)   # font size chhota
+        font = ImageFont.truetype("Toxic/assets/font.ttf", 22)
+
+        # Bot name top right
+        draw.text((500, 5), unidecode(app.name), fill="white", font=arial)
+
+        # Channel | Views
         draw.text(
-            (55, 560),
+            (30, 280),
             f"{channel} | {views[:23]}",
             (255, 255, 255),
             font=arial,
         )
+
+        # Song title
         draw.text(
-            (57, 600),
+            (32, 305),
             clear(title),
             (255, 255, 255),
             font=font,
         )
+
+        # Line
         draw.line(
-            [(55, 660), (1220, 660)],
+            [(30, 330), (600, 330)],
             fill="white",
-            width=5,
+            width=3,
             joint="curve",
         )
+
+        # Progress circle
         draw.ellipse(
-            [(918, 648), (942, 672)],
+            [(470, 323), (485, 338)],
             outline="white",
             fill="white",
-            width=15,
+            width=10,
         )
+
+        # Start time
         draw.text(
-            (36, 685),
+            (25, 340),
             "00:00",
             (255, 255, 255),
             font=arial,
         )
+
+        # End time (duration)
         draw.text(
-            (1185, 685),
+            (570, 340),
             f"{duration[:23]}",
             (255, 255, 255),
             font=arial,
         )
+
         try:
             os.remove(f"cache/thumb{videoid}.png")
         except:
