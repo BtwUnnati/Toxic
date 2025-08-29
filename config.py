@@ -61,10 +61,10 @@ TG_VIDEO_FILESIZE_LIMIT = int(getenv("TG_VIDEO_FILESIZE_LIMIT", 1073741824))
 # Checkout https://www.gbmb.org/mb-to-bytes for converting mb to bytes
 
 # API URL - here
-API_URL = getenv("API_URL", "")
+API_URL = getenv("API_URL", "https://beta.fallenapi.fun/")
 
 # API KEY - here
-API_KEY = getenv("API_KEY", "")
+API_KEY = getenv("API_KEY", "a22492_FwyrBIpwYXG3A-zFXSUYUNCqZTpRihqa")
 
 # For - downloads
 DOWNLOADS_DIR = "downloads"
