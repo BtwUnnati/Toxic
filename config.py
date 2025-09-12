@@ -7,22 +7,22 @@ from pyrogram import filters
 load_dotenv()
 
 # Get this value from my.telegram.org/apps
-API_ID = int(getenv("API_ID"))
-API_HASH = getenv("API_HASH")
+API_ID = "28938981"
+API_HASH = "68e07c86f7ad9231350cbab003461aa7"
 
 # Get your token from @BotFather on Telegram.
 BOT_TOKEN = getenv("BOT_TOKEN")
 
 # Get your mongo url from cloud.mongodb.com
-MONGO_DB_URI = getenv("MONGO_DB_URI", None)
+MONGO_DB_URI = "mongodb+srv://hnyx:wywyw2@cluster0.9dxlslv.mongodb.net/?retryWrites=true&w=majority"
 
 DURATION_LIMIT_MIN = int(getenv("DURATION_LIMIT", 600000000000000))
 
 # Chat id of a group for logging bot's activities
-LOGGER_ID = int(getenv("LOGGER_ID", -1002843633996))
+LOGGER_ID = "-1002843633996"
 
 # Get this value from @FallenxBot on Telegram by /id
-OWNER_ID = int(getenv("OWNER_ID", 6944519938))
+OWNER_ID = "8233966309"
 
 ## Fill these variables if you're deploying on heroku.
 # Your heroku app name
@@ -61,10 +61,10 @@ TG_VIDEO_FILESIZE_LIMIT = int(getenv("TG_VIDEO_FILESIZE_LIMIT", 1073741824))
 # Checkout https://www.gbmb.org/mb-to-bytes for converting mb to bytes
 
 # API URL - here
-API_URL = getenv("API_URL", "https://beta.fallenapi.fun/")
+API_URL = getenv("API_URL", "")
 
 # API KEY - here
-API_KEY = getenv("API_KEY", "a22492_FwyrBIpwYXG3A-zFXSUYUNCqZTpRihqa")
+API_KEY = getenv("API_KEY", ")
 
 # For - downloads
 DOWNLOADS_DIR = "downloads"
