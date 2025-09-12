@@ -90,15 +90,13 @@ HELP_8 = """
 """
 
 HELP_9 = """
-<u><b>ᴀɪ ʙᴏᴛ</b></u> [ᴠᴏɪᴄᴇ ᴀꜱꜱɪꜱᴛᴀɴᴛ & ᴛᴇxᴛ ʙᴏᴛʜ ᴀʀᴇ ꜱᴜᴘᴘᴏʀᴛɪɴɢ] :
+<u><b>ɪɴsᴛᴀ</b></u> :
 
-/ask : ask anything 
+/ig : download media 
 
-example : /ask aaj date kya hai (bot reply in voice msg)
+example : /ig "insta media link"
 
-/ask write a code using pthon in short (bot reply in text)
-
-ᴛʜɪꜱ ʙᴏᴛ ꜱᴜᴘᴘᴏʀᴛꜱ ʙᴏᴛʜ ᴠᴏɪᴄᴇ ᴀɴᴅ ᴛᴇxᴛ ʀᴇᴘʟɪᴇꜱ ᴜꜱɪɴɢ ɢᴇᴍɪɴɪ 2.0  @Echo_Bug
+ᴛʜɪꜱ ʙᴏᴛ ꜱᴜᴘᴘᴏʀᴛꜱ ʙᴏᴛʜ ᴠᴏɪᴄᴇ ᴀɴᴅ ᴛᴇxᴛ ʀᴇᴘʟɪᴇꜱ ᴜꜱɪɴɢ ɢᴇᴍɪɴɪ [ᴛᴇᴍᴘᴏʀᴀʀʏ ʀᴇᴍᴏᴠᴇᴅ. ᴄᴏᴍɪɴɢ sᴏᴏɴ]
 """
 
 HELP_10 = """
