@@ -64,7 +64,7 @@ TG_VIDEO_FILESIZE_LIMIT = int(getenv("TG_VIDEO_FILESIZE_LIMIT", 1073741824))
 API_URL = getenv("API_URL", "")
 
 # API KEY - here
-API_KEY = getenv("API_KEY", ")
+API_KEY = getenv("API_KEY", "")
 
 # For - downloads
 DOWNLOADS_DIR = "downloads"
