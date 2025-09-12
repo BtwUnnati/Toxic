@@ -157,14 +157,14 @@ async def get_thumb(videoid: str):
         image2 = image1.convert("RGBA")
 
         # Custom background (dev.jpg)
-        if os.path.exists("Toxic/assets/dev.jpg"):
-            custom_bg = Image.open("dev.jpg")
+     #   if os.path.exists("Toxic/assets/dev.jpg"):
+            custom_bg = Image.open("Toxic/assets/dev.jpg")
             custom_bg = changeImageSize(1280, 720, custom_bg)
             custom_bg = custom_bg.convert("RGBA")
             background = custom_bg.filter(ImageFilter.BoxBlur(20))
             enhancer = ImageEnhance.Brightness(background)
             background = enhancer.enhance(0.6)
-        else:
+     #   else:
             background = image2.filter(ImageFilter.BoxBlur(20))
             enhancer = ImageEnhance.Brightness(background)
             background = enhancer.enhance(0.6)
