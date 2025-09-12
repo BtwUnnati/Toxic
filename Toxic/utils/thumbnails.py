@@ -46,8 +46,16 @@ def generate_gradient(width, height, start_color, end_color):
     base.paste(top, (0, 0), mask)
     return base
 
+def add_border(image, border_width, border_color):
+    width, height = image.size
+    new_width = width + 2 * border_width
+    new_height = height + 2 * border_width
+    new_image = Image.new("RGBA", (new_width, new_height), border_color)
+    new_image.paste(image, (border_width, border_width))
+    return new_image
+
 # 🔹 Updated function: border हटा दिया है
-def crop_center_circle(img, output_size, border=0, border_color=(0,0,0,0), crop_scale=1.5):
+def crop_center_circle(img, output_size, crop_scale=1.5):
     half_the_width = img.size[0] / 2
     half_the_height = img.size[1] / 2
     larger_size = int(output_size * crop_scale)
@@ -167,6 +175,7 @@ async def get_thumb(videoid: str):
         font = ImageFont.truetype("Toxic/assets/font.ttf", 30)
         title_font = ImageFont.truetype("Toxic/assets/font3.ttf", 45)
 
+        # 🔹 border arguments हटा दिए
         circle_thumbnail = crop_center_circle(youtube, 400)
         circle_thumbnail = circle_thumbnail.resize((400, 400))
         circle_position = (120, 160)
