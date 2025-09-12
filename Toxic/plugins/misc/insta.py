@@ -1,7 +1,7 @@
 import httpx
 from pyrogram import Client, filters
 from pyrogram.types import Message
-from ANNIEMUSIC import app
+from Toxic import app
 
 API_URL = "https://www.alphaapis.org/Instagram/dl/v1"
 
