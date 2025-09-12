@@ -79,7 +79,7 @@ async def get_thumb(videoid: str):
                     await f.close()
 
         # 🔹 Background GIF lagao
-        gif_path = "Toxic/assets/background.gif"  # <-- yaha apni gif ka path do
+        gif_path = "Toxic/assets/dev.gif"  # <-- yaha apni gif ka path do
         background = Image.open(gif_path).convert("RGBA")
         background = background.resize((1280, 720))
 
