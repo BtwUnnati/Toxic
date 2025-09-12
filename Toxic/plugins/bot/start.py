@@ -86,9 +86,8 @@ async def start_pm(client, message: Message, _):
                 )
     else:
         out = private_panel(_)
-      um = await message.reply_sticker(sticker=random.choice(U_M)),
-        asyncio.create_task(delete_sticker_after_delay(um, 3)),
-        #await message.reply_sticker(sticker=random.choice(U_M)),
+        sticker_message = await message.reply_sticker(sticker=random.choice(U_M)),
+        asyncio.create_task(delete_sticker_after_delay(sticker_message, 3)),
         await message.reply_video(random.choice(START_VIDS),
             caption=_["start_2"].format(message.from_user.mention, app.mention),
             reply_markup=InlineKeyboardMarkup(out),
@@ -153,5 +152,6 @@ async def welcome(client, message: Message):
                 await message.stop_propagation()
         except Exception as ex:
             print(ex)
+
 
 
