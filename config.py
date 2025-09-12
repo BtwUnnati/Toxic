@@ -86,8 +86,8 @@ confirmer = {}
 
 
 START_VIDS = [
-    "https://ar-hosting.pages.dev/1757691749685.mp4",
-    "https://ar-hosting.pages.dev/1757691791813.mp4"
+    "https://ar-hosting.pages.dev/1757694121759.mp4",
+    "https://ar-hosting.pages.dev/1757694331761.mp4"
 ]
 
 U_M = [
