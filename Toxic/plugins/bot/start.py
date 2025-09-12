@@ -25,12 +25,11 @@ from Toxic.utils.inline import help_pannel, private_panel, start_panel
 from config import BANNED_USERS,  START_VIDS, U_M
 from strings import get_string
 
+
 async def delete_sticker_after_delay(message, delay):
     await asyncio.sleep(delay)
     await message.delete()
     
-
-
 @app.on_message(filters.command(["start"]) & filters.private & ~BANNED_USERS)
 @LanguageStart
 async def start_pm(client, message: Message, _):
@@ -91,7 +90,7 @@ async def start_pm(client, message: Message, _):
                 )
     else:
         out = private_panel(_)
-        sticker_message = await message.reply_sticker(sticker=random.choice(U_M)),
+        sticker_message = await message.reply_sticker(sticker=random.choice(U_M))
         asyncio.create_task(delete_sticker_after_delay(sticker_message, 3)),
         await message.reply_video(random.choice(START_VIDS),
             caption=_["start_2"].format(message.from_user.mention, app.mention),
@@ -157,6 +156,7 @@ async def welcome(client, message: Message):
                 await message.stop_propagation()
         except Exception as ex:
             print(ex)
+
 
 
 
