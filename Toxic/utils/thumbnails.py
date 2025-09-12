@@ -164,7 +164,7 @@ async def get_thumb(videoid: str):
             background = custom_bg.filter(ImageFilter.BoxBlur(20))
             enhancer = ImageEnhance.Brightness(background)
             background = enhancer.enhance(0.6)
-       else:
+        else:
             background = image2.filter(ImageFilter.BoxBlur(20))
             enhancer = ImageEnhance.Brightness(background)
             background = enhancer.enhance(0.6)
