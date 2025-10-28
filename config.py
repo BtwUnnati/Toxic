@@ -97,7 +97,7 @@ U_M = [
 ]
 
 START_IMG_URL = getenv(
-    "START_IMG_URL", "https://ar-hosting.pages.dev/1756396828999.jpg"
+    "START_IMG_URL", "https://ar-hosting.pages.dev/1761670209582.jpg"
 )
 
 PING_IMG_URL = getenv(
